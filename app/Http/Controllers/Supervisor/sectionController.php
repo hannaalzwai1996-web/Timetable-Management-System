@@ -87,4 +87,12 @@ class sectionController extends Controller
 
         
     }
+    public function byGrade($gradeId)
+{
+    $sections = section::where('grade_id', $gradeId)
+        ->select('id', 'name')
+        ->get();
+
+    return response()->json($sections);
+}
 }

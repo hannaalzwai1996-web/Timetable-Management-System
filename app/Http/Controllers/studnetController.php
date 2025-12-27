@@ -1,98 +1,94 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Registrar;
 
-use App\Models\grade;
-use App\Models\section;
-use App\Models\student;
+use App\Http\Controllers\Controller;
+use App\Models\Student;
 use App\Models\User;
+use App\Models\Grade;
+use App\Models\Section;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
-class studnetController extends Controller
+class StudnetController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        $student=student::with("user","grade","section")->get();
-        return view("",compact("student"));
+        $students = Student::with(['grade','section'])->get();
+        return view('Registrar.students.index', compact('students'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        $user=User::all();
-        $grade=grade::all();
-        $section=section::all();
-        return view("",compact(["user","grade","section"]));
+        $grades = Grade::all();
+        $sections = Section::all();
+        return view('Registrar.students.create', compact('grades','sections'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        $input=$request->validate([
-        "user_id"=>["required|exists:users,id"],
-        "full_name"=>["required"],
-        "grade_id"=>["required|exists:grades,id"],
-        "section_id"=>["required|exists:sections,id"],
-        "date_of_birth"=>["required","date"],
+        $request->validate([
+            'full_name' => 'required',
+            'email' => 'required|email|unique:users',
+            'password' => 'required|min:6',
+            'grade_id' => 'required',
+            'section_id' => 'required',
+            'date_of_birth' => 'required|date',
         ]);
-        student::create($input);
-        return redirect(route(""))->with("success","added successfully");
-    }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(student $student)
-    {
-        return view("",compact("student"));
-
-        
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(student $student)
-    {
-        $user=User::all();
-        $grade=grade::all();
-        $section=section::all();
-        return view("",compact(["student","user","grade","section"]));
-
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, student $student)
-    {
-        $input=$request->validate([
-        "user_id"=>["required|exists:users,id"],
-        "full_name"=>["required"],
-        "grade_id"=>["required|exists:grades,id"],
-        "section_id"=>["required|exists:sections,id"],
-        "date_of_birth"=>["required","date"],
+        $user = User::create([
+            'name' => $request->full_name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => 'student'
         ]);
-        $student->update($input);
-        return redirect(route(""))->with("success","updated successfully");
 
-        
+        Student::create([
+            'user_id' => $user->id,
+            'full_name' => $request->full_name,
+            'grade_id' => $request->grade_id,
+            'section_id' => $request->section_id,
+            'date_of_birth' => $request->date_of_birth,
+        ]);
+
+        return redirect()->route('registrar.students.index')->with('success','تم تسجيل الطالب بنجاح');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(student $student)
+    public function edit($id)
     {
+        $student = Student::findOrFail($id);
+        $grades = Grade::all();
+        $sections = Section::all();
+        return view('Registrar.students.edit', compact('student','grades','sections'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $student = Student::findOrFail($id);
+
+        $request->validate([
+            'full_name' => 'required',
+            'grade_id' => 'required',
+            'section_id' => 'required',
+            'date_of_birth' => 'required|date',
+        ]);
+
+        $student->update([
+            'full_name' => $request->full_name,
+            'grade_id' => $request->grade_id,
+            'section_id' => $request->section_id,
+            'date_of_birth' => $request->date_of_birth,
+        ]);
+
+        return redirect()->route('registrar.students.index')->with('success','تم تعديل بيانات الطالب بنجاح');
+    }
+
+    public function destroy($id)
+    {
+        $student = Student::findOrFail($id);
+        $student->user()->delete(); // تحذف المستخدم المرتبط
         $student->delete();
-        return redirect(route(""))->with("success","deleted successfully");
 
+        return redirect()->route('registrar.students.index')->with('success','تم حذف الطالب بنجاح');
     }
 }
